@@ -1,0 +1,19 @@
+#==============================================================================
+# The graph is similar to the graph fig 1.9 page 19 from
+# Introduction to Compiler Design, Second Edition by Torben Ægidius Mogensen.
+#==============================================================================
+digraph finite_state_machine {
+	rankdir=LR;  // horizontal layout
+	size="8,5"
+	node [shape = doublecircle]; 3;  // accepted states
+	node [shape = circle];
+    startarrow [label= "", shape=none,height=.0,width=.0];  // adds "fake" node
+    startarrow -> 0;										// entry arrow
+	0 -> 1 [label = "a"];
+	0 -> 2 [label = "b"];
+	1 -> 1 [label = "a"];
+	1 -> 2 [label = "b"];
+	1 -> 3 [label = "c"];
+	2 -> 1 [label = "a"];
+	2 -> 2 [label = "b"];
+}
