@@ -76,13 +76,13 @@ class FiniteAutomata:
         raise Exception("State not found")
 
     def to_DFA(self):
-        print("NFA to DFA")
+        output = ["NFA to DFA\n"]
         
         s0 = self.startstate.epsilon_closure()
         is_acc = self.any_acc_state(s0)
         acc = 'accepting' if is_acc else 'non-acc'
         
-        print(f"start = ec({{{self.startstate.name}}}) = {s0} = s0 ({acc})")
+        output += [f"start = ec({{{self.startstate.name}}}) = {s0} = s0 ({acc})\n"]
 
         # create new start state
         start_state = State('s0', self.alphabet, acc=is_acc)
@@ -93,14 +93,17 @@ class FiniteAutomata:
         new_state_queue = Queue()
         new_state_queue.put((start_state, s0))
         while not new_state_queue.empty():
-            print()
+
+            output += ["\n"]
             state, states = new_state_queue.get()
 
             for c in self.alphabet:
-                print(f"move({state.name},{c}) = ", end='')
+
+                output += [f"move({state.name},{c}) = "]
                 next_state_set = set()
 
-                # check which transitions are possible from the state
+                # check which transitions are possible from the state'
+
                 for s in states:
                     res = s.get_transitions(c)
                     if res:
@@ -108,7 +111,8 @@ class FiniteAutomata:
 
                 if next_state_set:
                     # get epsilon closures                
-                    print(f"ec({next_state_set}) = ", end='')
+
+                    output += [f"ec({next_state_set}) = "]
                     temp = set()
                     for s in next_state_set:
                         temp.update(s.epsilon_closure())
@@ -120,7 +124,8 @@ class FiniteAutomata:
                         if item == next_state_set:
                             index = s  # state name
 
-                    print(f"{index}", end='')
+                    output += [f"{index}"]
+
                     if not index:
                         # create new state
                         new_state_name = 's'+str(new_state_index)
@@ -135,23 +140,24 @@ class FiniteAutomata:
                         new_state_queue.put((new_state, next_state_set))
                         new_state_index += 1
                         index = new_state_name
-                        # next_state_set = sorted(next_state_set, key = lambda s: s.name)
-                        print(f"{next_state_set} = ", end='')
+
+                        output += [f"{next_state_set} = "]
                         
-                        print(f"{index} ({acc})", end='')
+                        output += [f"{index} ({acc})"]
 
                     t_state = self.get_state_by_name(index, new_states)
                     state.add_transition(t_state, c)
-                    print()
+
+                    output += ["\n"]
                 else:
-                    print(f"ec({{}}) = ", end='')
-                    print("undefined")
+                    output += [f"ec({{}}) = undefined\n"]
         # loop end
+        print(''.join(output))
         return new_states
 
 
 
-    def print_as_gvfile(self) -> None:
+    def to_graphviz(self) -> str:
         accstr = ''.join([' '+state for state in self.accepting])
         output = [
             f'digraph finite_state_machine {{',
@@ -165,7 +171,16 @@ class FiniteAutomata:
         states_out = [str(state) for state in self.states]
         output.extend(states_out)
         output = '\n'.join(output) + '}'
-        print(output)
+        return output
+
+
+    def print_as_gvfile(self) -> None:
+        print(self.to_graphviz())
+
+    def export_as_gvfile(self, filename) -> None:
+        with open(f'src/graphviz/{filename}.gv', 'w') as f:
+            f.write(self.to_graphviz())
+
 
 
 if __name__ == "__main__":
@@ -202,7 +217,7 @@ if __name__ == "__main__":
     finiteAutomata = FiniteAutomata(s1, all_states, alphabet)
     # print(finiteAutomata.get_starclosure())
     newstates = finiteAutomata.to_DFA()
-    # newfiniteAutomata = FiniteAutomata(newstates[0], newstates, alphabet)
+    newfiniteAutomata = FiniteAutomata(newstates[0], newstates, alphabet)
     # # finiteAutomata.print_as_gvfile()
-    # newfiniteAutomata.print_as_gvfile()
+    newfiniteAutomata.export_as_gvfile('test3')
     
