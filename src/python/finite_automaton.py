@@ -47,90 +47,131 @@ class FiniteAutomaton:
 class NFA(FiniteAutomaton):
 
     def to_DFA(self, verbose=True) -> 'DFA':
-        # helper functions
+        # Initialize variable(s)
+        self.name_index = 0
+
+        # -- helper functions ----------------------------------------------- #
         def acc_to_str(is_acc: bool) -> str:
             return 'accepting' if is_acc else 'non-acc'
 
-        output = [
-            '-'*80 + "\nNFA to DFA\n" + '-'*80 + "\n"
-            ]
+        def next_state_name():
+            """ Ex: start state = 's0', next = 's1' """
+            name = 's'+str(self.name_index)
+            self.name_index += 1
+            return name
 
-        s0 = StateCollection(self.start.epsilon_closure())  # StateCollection
-
-        is_acc = s0.any_accepting()
-        acc = acc_to_str(is_acc)
-
-        output += [
-            f"start = ec({{{self.start.name}}}) = {s0.state_names()} = s0 ({acc})\n"
-        ]
+        #######################################################################
+        # ec(start_state) -> start_set:
+        # Gives us the set of states reachable from
+        # the NFA start state through epsilon transitions
+        #######################################################################
+        start_set = StateCollection(self.start.epsilon_closure())
 
         # create new start state
-        start_state = State('s0', acc=is_acc)
-        new_states = StateCollection([start_state])
+        new_state_name = next_state_name()
+        start_state = State(new_state_name, acc=start_set.any_accepting())
 
-        new_state_sets = {start_state.name: s0}
-        new_state_index = 1
+        # create new StateCollection for all the final DFA states
+        dfa_states = StateCollection([start_state])
+
+        # output strings
+        output = ['-'*80 + "\nNFA to DFA\n" + '-'*80 + "\n"]
+        output += [
+            f"start = ec({{{self.start.name}}}) = ",
+            f"{start_set.state_names()} = {new_state_name} ",
+            f"({acc_to_str(start_state.acc)})\n"
+        ]
+
+        #######################################################################
+        # dfa_state_sets: Dictionary linking the new DFA states with the NFA
+        # state sets which is used to determine if a new DFA state should be
+        # created or if the NFA set is already linked to an existing DFA state
+        #######################################################################
+        dfa_state_sets = {start_state.name: start_set}
+
+        # Initialize queue for new DFA states and related NFA state sets
         new_state_queue = Queue()
-        new_state_queue.put((start_state, s0))
+        new_state_queue.put((start_state, start_set))
+
         while not new_state_queue.empty():
 
+            # output strings - spacing
             output += ["\n"]
-            state, states = new_state_queue.get()
 
+            # get next state set from queue
+            dfa_state, nfa_state_set = new_state_queue.get()
+
+            # check possible transitions for every label in alphabet
             for c in self.alphabet:
 
-                output += [f"move({state.name},{c}) = "]
+                # output strings
+                output += [f"move({dfa_state.name},{c}) = "]
 
-                # check which transitions are possible from the state'
-
-                next_state_set = states.move(c)
+                ###############################################################
+                # move(c): check which transitions are reachable from the state
+                # through the label c
+                ###############################################################
+                next_state_set = nfa_state_set.move(c)
 
                 if next_state_set.states_by_name:  # dictionary not empty
+
+                    # output strings
+                    output += [f"ec({next_state_set.state_names()}) = "]
+
                     # get epsilon closures
-
-                    # TODO: Validate str output
-                    output += [
-                        f"ec({next_state_set.state_names()}) = "
-                        ]
-
                     next_state_set.ec()
 
-                    index = ""
-                    for s, item in new_state_sets.items():
-                        if item == next_state_set:  # needs to be equal
-                            index = s  # state name
+                    ###########################################################
+                    # check if next_state_set already is referenced by
+                    # a new DFA state
+                    ###########################################################
+                    new_state_name = ''
+                    for sn, nfa_states in dfa_state_sets.items():
+                        if nfa_states == next_state_set:  # needs to be equal
+                            new_state_name = sn  # sn: state name
 
-                    output += [f"{index}"]
+                    # output strings
+                    temp = [f"{new_state_name}\n"]
 
-                    if not index:
+                    if not new_state_name:
+
                         # create new state
-                        new_state_name = 's'+str(new_state_index)
-                        new_state_sets[new_state_name] = next_state_set
+                        new_state_name = next_state_name()
+                        new_state = State(new_state_name,
+                                          acc=next_state_set.any_accepting())
 
-                        is_acc = next_state_set.any_accepting()
-                        acc = 'accepting' if is_acc else 'non-acc'
+                        # add new state to DFA StateCollection
+                        dfa_state_sets[new_state_name] = next_state_set
+                        dfa_states.add(new_state)
 
-                        new_state = State(new_state_name, acc=is_acc)
-                        new_states.add(new_state)
-
+                        # enqueue new DFA state and related NFA state set
                         new_state_queue.put((new_state, next_state_set))
-                        new_state_index += 1
-                        index = new_state_name
 
-                        output += [f"{next_state_set.state_names()} = "]
+                        # output strings - overwrite temp
+                        temp = [
+                            f"{next_state_set.state_names()} = ",
+                            f"{new_state_name} ({acc_to_str(new_state.acc)})\n"
+                            ]
 
-                        output += [f"{index} ({acc})"]
+                    ###########################################################
+                    # Add the transition to the new DFA state for the current
+                    # label c. This can be an already existing DFA state,
+                    # including dfa_state (loop) or a new state created in the
+                    # current iteration.
+                    ###########################################################
+                    to_state = dfa_states.get(new_state_name)
+                    dfa_state.add_transition(to_state, c)
 
-                    t_state = new_states.get(index)
-                    state.add_transition(t_state, c)
-
-                    output += ["\n"]
+                    # output strings
+                    output += temp
                 else:
                     output += [f"ec({{}}) = undefined\n"]
-        # loop end
+
+        # while-loop end
+        # print output if verbose = True
         if verbose:
             print(''.join(output))
-        return DFA(self.alphabet, start_state, new_states)
+        return DFA(self.alphabet, start_state, dfa_states)
 
     def __repr__(self):
         return "NFA"
