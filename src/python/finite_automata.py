@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import List
 from queue import Queue
 
 class State:
@@ -214,6 +214,8 @@ if __name__ == "__main__":
 
     alphabet = ['a', 'b']
     all_states = set([s1, s2, s3, s4, s5, s6, s7])
+
+    
     finiteAutomata = FiniteAutomata(s1, all_states, alphabet)
     # print(finiteAutomata.get_starclosure())
     newstates = finiteAutomata.to_DFA()
