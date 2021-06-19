@@ -5,6 +5,8 @@ class Transition:
 
     def __init__(self, to_state: 'State', label: str = '') -> None:
         self.epsilon = False
+        if to_state is None:
+            raise Exception("Transition Error: State cannot be None.")
         self.to_state = to_state
         self.label = label  # transition label (character)
         if not label:

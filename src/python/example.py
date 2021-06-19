@@ -34,6 +34,6 @@ if __name__ == "__main__":
     all_states = StateCollection([s1, s2, s3, s4, s5, s6, s7])
 
     nfa = NFA(alphabet, s1, all_states)
-    # nfa.print_as_gvfile()
+    nfa.print_as_gvfile()
     dfa = nfa.to_DFA()
-    # dfa.print_as_gvfile()
+    dfa.print_as_gvfile()

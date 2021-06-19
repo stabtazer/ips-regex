@@ -4,10 +4,11 @@ from src.python.transitions import Transition, TransitionCollection
 
 class State:
 
-    def __init__(self, name: str, acc=False) -> None:
+    def __init__(self, name: str, acc=False, origin: str = '') -> None:
         self.transitions = TransitionCollection()  # initialize collection
         self.name = name
         self.acc = acc  # accepting or non-accepting state
+        self.origin = origin  # to print original states after minimize
 
     # Methods
     def add_transition(self, to_state: 'State', label: str = '') -> None:
@@ -38,7 +39,8 @@ class State:
         output = ""
         for label, transitions in self.transitions.tbl.items():
             for transition in transitions:
-                output += f"{self.name} -> {transition.to_state.name} [label = \"{label}\"];\n"
+                output += f"{self.name} -> {transition.to_state.name} "
+                output += f"[label = \"{label}\"];\n"
         return output.strip()
 
 
@@ -57,7 +59,11 @@ class StateCollection:
             self.accepting.append(state)
 
     def get(self, state_name):
-        return self.states_by_name[state_name]
+        try:
+            res = self.states_by_name[state_name]
+        except KeyError:
+            res = None
+        return res
 
     def move(self, label) -> 'StateCollection':
         res = set()
@@ -100,6 +106,11 @@ class StateCollection:
         res.sort()
         output = ", ".join(res)
         return f"{{{output}}}"
+
+    def __iter__(self):
+        """ Make class object iterable """
+        return (state for
+                _, state in self.states_by_name.items())
 
     def __str__(self) -> str:
         res = []
