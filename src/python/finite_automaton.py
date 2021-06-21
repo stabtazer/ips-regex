@@ -268,6 +268,50 @@ class DFA(FiniteAutomaton):
                 out += ["\n"]
             return out
 
+        def any_dead_states(dfa_to_check) -> List[State]:
+            """ Check if any states in the DFA are dead states
+
+            Args:
+                dfa_to_check (DFA): Graph of DFA
+
+            Returns:
+                List[State]: The list of all dead states found
+            """
+            def dead_state(state_to_check, visited_states=[]):
+                if state_to_check.acc:
+                    return False
+
+                elif state_to_check in visited_states:
+                    return True
+
+                elif not state_to_check.transitions.tbl:  # no transitions
+                    return True
+
+                else:
+                    is_dead = True
+                    for _, trs in state_to_check.transitions.tbl.items():
+                        for t in trs:
+                            if t.to_state.acc:
+                                return False
+                            if t.to_state == state_to_check:
+                                # loop to self
+                                continue
+                            if t.to_state in visited_states:
+                                # already checked
+                                continue
+                            else:
+                                is_dead = (is_dead and
+                                           dead_state(t.to_state,
+                                                      visited_states.append(
+                                                        state_to_check)))
+                return is_dead
+
+            dead_states = []
+            for state in dfa_to_check.sc:
+                if dead_state(state, dead_states):
+                    dead_states.append(state)
+            return dead_states
+
         #######################################################################
         # start by creating two new groups:
         # G1 for all accepting states
@@ -291,6 +335,24 @@ class DFA(FiniteAutomaton):
             f"{g1_name} = {groups[g1_name].state_names():<13} accepting\n",
             f"{g2_name} = {groups[g2_name].state_names():<13} non-accepting\n"
         ]
+
+        #######################################################################
+        # Dead states
+        # Check to see if any states are dead. If so, then add a new state and
+        # add all undefined transitions to this.
+        #
+        # Check
+        # A state is dead if following conditions are met:
+        # The state is non-accepting AND
+        # (no transitions to states OR
+        # it is not possible to transition to an accepting state)
+        #######################################################################
+        dead_states = any_dead_states(self)
+        if dead_states:
+            # TODO: Add 'dummy' state
+            output += [f"Dead states = {dead_states}"]
+        else:
+            output += ["No dead states."]
 
         # Initialize queue for new groups and related DFA state sets
         unmarked_groups = Queue()
@@ -435,7 +497,6 @@ class DFA(FiniteAutomaton):
             res = []
             for c in self.alphabet:
                 state_transitions = sc.move(c)
-                is_acc = state_transitions.any_accepting()
 
                 if state_transitions.states_by_name:
                     # just pick one, as they are consistent
@@ -460,7 +521,9 @@ class DFA(FiniteAutomaton):
             res = ' '.join(res)
 
             # output strings
-            output += [f"\n{group_name}  {res}    {start}{acc_to_str(is_acc)}"]
+            output += [
+                f"\n{group_name}  {res}    {start}{acc_to_str(accepting)}"
+            ]
         output += ["\n"]
 
         if verbose:
