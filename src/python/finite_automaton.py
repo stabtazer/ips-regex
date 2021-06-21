@@ -336,6 +336,7 @@ class DFA(FiniteAutomaton):
         # The state is non-accepting AND
         # (no transitions to states OR
         # it is not possible to transition to an accepting state)
+        # TODO: Test on more cases and export gv file after dummy insert
         #######################################################################
         dead_states = any_dead_states(self)
         if dead_states:
