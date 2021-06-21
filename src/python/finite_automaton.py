@@ -323,18 +323,8 @@ class DFA(FiniteAutomaton):
         groups[g1_name] = StateCollection()  # G1
         groups[g2_name] = StateCollection()  # G2
 
-        for state in self.sc:
-            if state.acc:
-                groups[g1_name].add(state)
-            else:
-                groups[g2_name].add(state)
-
         # output strings
         output = ['-'*80 + "\nMinimizing DFA\n" + '-'*80 + "\n"]
-        output += [
-            f"{g1_name} = {groups[g1_name].state_names():<13} accepting\n",
-            f"{g2_name} = {groups[g2_name].state_names():<13} non-accepting\n"
-        ]
 
         #######################################################################
         # Dead states
@@ -349,10 +339,31 @@ class DFA(FiniteAutomaton):
         #######################################################################
         dead_states = any_dead_states(self)
         if dead_states:
-            # TODO: Add 'dummy' state
-            output += [f"Dead states = {dead_states}"]
+            dummy = State('d0')
+            self.sc.add(dummy)
+            # add undefined transitions
+            for state in self.sc:
+                for c in self.alphabet:
+                    if not state.get_label_transitions(c):
+                        state.add_transition(dummy, c)
+
+            # output strings
+            output += [f"Dead states = {dead_states}\n"]
         else:
-            output += ["No dead states."]
+            output += ["No dead states.\n"]
+
+        # Add states to new groups
+        for state in self.sc:
+            if state.acc:
+                groups[g1_name].add(state)
+            else:
+                groups[g2_name].add(state)
+
+        # output strings
+        output += [
+            f"{g1_name} = {groups[g1_name].state_names():<13} accepting\n",
+            f"{g2_name} = {groups[g2_name].state_names():<13} non-accepting\n"
+        ]
 
         # Initialize queue for new groups and related DFA state sets
         unmarked_groups = Queue()
@@ -474,6 +485,11 @@ class DFA(FiniteAutomaton):
             # for G transitions.
             ###################################################################
 
+            # Disregard group with dummy state
+            if sc.get('d0'):
+                dummy_group = group_name
+                continue
+
             # Create new State
             is_start = sc.get(self.start.name)
             start = "start, " if is_start else ''
@@ -498,6 +514,7 @@ class DFA(FiniteAutomaton):
             for c in self.alphabet:
                 state_transitions = sc.move(c)
 
+                r = ' -'
                 if state_transitions.states_by_name:
                     # just pick one, as they are consistent
                     for key in state_transitions.states_by_name:
@@ -506,16 +523,17 @@ class DFA(FiniteAutomaton):
 
                     # get group name
                     for gn, states in groups.items():
-                        if states.get(sn):
+                        # get the transitions group name
+                        # unless it contains the dummy state
+                        if states.get(sn) and not states.get('d0'):
                             # check to see if it already exists
                             t_state = minimized_sc.get(gn)
                             if not t_state:  # not found - create
                                 t_state = State(gn)  # will be updated later
 
                             new_state.add_transition(t_state, c)
-                            res.append(gn)
-                else:
-                    res.append(' -')
+                            r = gn
+                res.append(r)
 
             # add the result to results as tuple
             res = ' '.join(res)
@@ -524,6 +542,12 @@ class DFA(FiniteAutomaton):
             output += [
                 f"\n{group_name}  {res}    {start}{acc_to_str(accepting)}"
             ]
+
+        if dead_states:
+            output += [
+                    f"\n\nRemoved {dummy_group} containing dummy state 'd0'"
+                ]
+
         output += ["\n"]
 
         if verbose:
