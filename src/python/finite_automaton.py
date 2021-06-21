@@ -277,14 +277,18 @@ class DFA(FiniteAutomaton):
             Returns:
                 List[State]: The list of all dead states found
             """
-            def dead_state(state_to_check, visited_states=[]):
+            visited_states = []
+
+            def dead_state(state_to_check):
                 if state_to_check.acc:
                     return False
 
-                elif state_to_check in visited_states:
+                elif not state_to_check.transitions.tbl:  # no transitions
+                    visited_states.append(state_to_check)
                     return True
 
-                elif not state_to_check.transitions.tbl:  # no transitions
+                elif state_to_check in visited_states:
+                    visited_states.append(state_to_check)
                     return True
 
                 else:
@@ -293,24 +297,23 @@ class DFA(FiniteAutomaton):
                         for t in trs:
                             if t.to_state.acc:
                                 return False
-                            if t.to_state == state_to_check:
+                            elif t.to_state == state_to_check:
                                 # loop to self
                                 continue
-                            if t.to_state in visited_states:
+                            elif t.to_state in visited_states:
                                 # already checked
                                 continue
                             else:
+                                visited_states.append(state_to_check)
                                 is_dead = (is_dead and
-                                           dead_state(t.to_state,
-                                                      visited_states.append(
-                                                        state_to_check)))
+                                           dead_state(t.to_state))
                 return is_dead
-
+            
             dead_states = []
             for state in dfa_to_check.sc:
-                if dead_state(state, dead_states):
+                if dead_state(state):
                     dead_states.append(state)
-            return dead_states
+            return set(dead_states)
 
         #######################################################################
         # start by creating two new groups:
@@ -349,9 +352,12 @@ class DFA(FiniteAutomaton):
                         state.add_transition(dummy, c)
 
             # output strings
-            output += [f"Dead states = {dead_states}\n"]
+            output += [
+                f"Dead states detected: {dead_states}\n",
+                f"=> adding dummy state: d0\n\n",
+            ]
         else:
-            output += ["No dead states.\n"]
+            output += ["No dead states detected.\n\n"]
 
         # Add states to new groups
         for state in self.sc:
