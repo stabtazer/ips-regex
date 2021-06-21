@@ -277,38 +277,51 @@ class DFA(FiniteAutomaton):
             Returns:
                 List[State]: The list of all dead states found
             """
-            visited_states = []
+            visited_states = {}
+            
+            DEAD = 1
+            NOT_DEAD = 2
+            UNDECIDED = 3
 
             def dead_state(state_to_check):
-                if state_to_check.acc:
-                    return False
+                # see if we already have checked the state
+                if state_to_check.name in visited_states:
+                    if visited_states[state_to_check.name] == DEAD:
+                        return True
+                    else:
+                        return False
 
-                elif not state_to_check.transitions.tbl:  # no transitions
-                    visited_states.append(state_to_check)
+                if not state_to_check.transitions.tbl:  # no transitions
+                    visited_states[state_to_check.name] = DEAD
                     return True
 
-                elif state_to_check in visited_states:
-                    visited_states.append(state_to_check)
-                    return True
-
-                else:
-                    is_dead = True
+                else:                        
                     for _, trs in state_to_check.transitions.tbl.items():
                         for t in trs:
-                            if t.to_state.acc:
-                                return False
-                            elif t.to_state == state_to_check:
+                            if t.to_state == state_to_check:
                                 # loop to self
                                 continue
-                            elif t.to_state in visited_states:
-                                # already checked
-                                continue
+                            elif t.to_state.acc:
+                                visited_states[state_to_check.name] = NOT_DEAD
+                                return False                                    
                             else:
-                                visited_states.append(state_to_check)
-                                is_dead = (is_dead and
-                                           dead_state(t.to_state))
-                return is_dead
-            
+                                # see if we have already checked transition state
+                                if t.to_state.name in visited_states:
+                                    if visited_states[t.to_state.name] == NOT_DEAD:
+                                        visited_states[state_to_check.name] = NOT_DEAD
+                                        return False
+                                else:
+                                    visited_states[state_to_check.name] = UNDECIDED
+                                    if not dead_state(t.to_state):
+                                        visited_states[state_to_check.name] = NOT_DEAD
+                                        return False
+                visited_states[state_to_check.name] = DEAD
+                return True
+
+            # initialize visited with accepting states
+            for state in dfa_to_check.sc.accepting:
+                visited_states[state.name] = NOT_DEAD
+
             dead_states = []
             for state in dfa_to_check.sc:
                 if dead_state(state):
