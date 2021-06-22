@@ -278,7 +278,7 @@ class DFA(FiniteAutomaton):
                 List[State]: The list of all dead states found
             """
             visited_states = {}
-            
+
             DEAD = 1
             NOT_DEAD = 2
             UNDECIDED = 3
@@ -295,7 +295,7 @@ class DFA(FiniteAutomaton):
                     visited_states[state_to_check.name] = DEAD
                     return True
 
-                else:                        
+                else:
                     for _, trs in state_to_check.transitions.tbl.items():
                         for t in trs:
                             if t.to_state == state_to_check:
@@ -303,7 +303,7 @@ class DFA(FiniteAutomaton):
                                 continue
                             elif t.to_state.acc:
                                 visited_states[state_to_check.name] = NOT_DEAD
-                                return False                                    
+                                return False
                             else:
                                 # see if we have already checked transition state
                                 if t.to_state.name in visited_states:
@@ -363,6 +363,10 @@ class DFA(FiniteAutomaton):
                 for c in self.alphabet:
                     if not state.get_label_transitions(c):
                         state.add_transition(dummy, c)
+
+            if not verbose:
+                # small hack: turn of verbose if dead state is detected to print gv
+                self.print_as_gvfile()
 
             # output strings
             output += [
