@@ -203,7 +203,7 @@ class DFA(FiniteAutomaton):
         else:
             pass
 
-    def minimize(self, verbose=True):
+    def minimize(self, dead_state_removal=True, verbose=True):
         # Initialize variable(s)
         self.name_index = 1
 
@@ -343,19 +343,29 @@ class DFA(FiniteAutomaton):
         output = ['-'*80 + "\nMinimizing DFA\n" + '-'*80 + "\n"]
 
         #######################################################################
-        # Dead states
-        # Check to see if any states are dead. If so, then add a new state and
-        # add all undefined transitions to this.
+        # * Dead states *
+        # Check to see if any states are dead.
+        # If so, then do one of the following:
+        # 1. Eliminate all dead states (and delete any transitions to these)
+        # 2. Make move total: add extra dead state (dummy), minimize and then
+        #    remove the new group containing the dead state(s).
         #
-        # Check
+        # * Check
         # A state is dead if following conditions are met:
         # The state is non-accepting AND
         # (no transitions to states OR
         # it is not possible to transition to an accepting state)
-        # TODO: Test on more cases and export gv file after dummy insert
         #######################################################################
-        dead_states = any_dead_states(self)
+
+        dead_states = any_dead_states(self) if dead_state_removal else []
+
         if dead_states:
+            ###################################################################
+            # Make move total
+            # This could be done regardless of any dead states or not,
+            # but we have included both the dead state detection and the extra
+            # dummy state addition for extended output and flexibility.
+            ###################################################################
             dummy = State('d0')
             self.sc.add(dummy)
             # add undefined transitions
@@ -371,7 +381,7 @@ class DFA(FiniteAutomaton):
             # output strings
             output += [
                 f"Dead states detected: {dead_states}\n",
-                f"=> adding dummy state: d0\n\n",
+                f"Make move() total: adding dummy state {{d0}}\n\n",
             ]
         else:
             output += ["No dead states detected.\n\n"]
